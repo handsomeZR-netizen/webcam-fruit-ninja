@@ -1,0 +1,22 @@
+{
+  "name": "webcam-fruit-ninja",
+  "version": "1.0.0",
+  "description": "网页端水果忍者游戏 - 基于摄像头手势识别",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "dev": "tsc --watch",
+    "serve": "npx http-server -p 8080 -c-1",
+    "start": "npm run build && npm run serve"
+  },
+  "keywords": ["game", "fruit-ninja", "webcam", "gesture-recognition", "mediapipe"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@mediapipe/hands": "^0.4.1646424915"
+  }
+}
