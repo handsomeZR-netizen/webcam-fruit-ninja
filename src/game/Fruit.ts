@@ -107,7 +107,7 @@ export class Fruit extends GameObject {
   /**
    * 渲染完整水果
    */
-  private renderWholeFruit(ctx: CanvasRenderingContext2D): void {
+  protected renderWholeFruit(ctx: CanvasRenderingContext2D): void {
     // 绘制水果 Emoji（优化：移除阴影以提升性能）
     ctx.font = `${this.radius * 2}px Arial`;
     ctx.textAlign = 'center';
@@ -118,7 +118,7 @@ export class Fruit extends GameObject {
   /**
    * 渲染切割后的水果
    */
-  private renderSlicedFruit(ctx: CanvasRenderingContext2D): void {
+  protected renderSlicedFruit(ctx: CanvasRenderingContext2D): void {
     ctx.save();
     ctx.rotate(this.sliceAngle);
 
@@ -147,7 +147,7 @@ export class Fruit extends GameObject {
   /**
    * 获取更亮的颜色（用于切面）
    */
-  private getLighterColor(color: string): string {
+  protected getLighterColor(color: string): string {
     // 简单的颜色变亮算法
     const hex = color.replace('#', '');
     const r = Math.min(255, parseInt(hex.substring(0, 2), 16) + 40);

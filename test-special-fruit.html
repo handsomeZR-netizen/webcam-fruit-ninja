@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>特殊水果测试</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    #canvas {
+      display: block;
+      margin: 20px auto;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    
+    .info {
+      text-align: center;
+      margin: 20px;
+      font-size: 18px;
+    }
+    
+    .controls {
+      text-align: center;
+      margin: 20px;
+    }
+    
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 16px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid white;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    button:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.05);
+    }
+    
+    .stats {
+      text-align: center;
+      margin: 20px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 10px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="info">
+    <h1>🍉 特殊水果系统测试 ⭐</h1>
+    <p>点击按钮生成不同类型的水果，观察特殊水果的视觉效果</p>
+  </div>
+  
+  <canvas id="canvas" width="800" height="600"></canvas>
+  
+  <div class="controls">
+    <button onclick="spawnNormalFruit()">生成普通水果</button>
+    <button onclick="spawnGoldenFruit()">生成黄金水果 ⭐</button>
+    <button onclick="spawnRandomFruits()">随机生成 (5% 特殊)</button>
+    <button onclick="clearCanvas()">清空画布</button>
+  </div>
+  
+  <div style="text-align: center;">
+    <div class="stats">
+      <div>普通水果: <span id="normalCount">0</span></div>
+      <div>黄金水果: <span id="goldenCount">0</span></div>
+      <div>总分数: <span id="totalScore">0</span></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { Fruit } from './dist/game/Fruit.js';
+    import { SpecialFruit, SpecialFruitType } from './dist/game/SpecialFruit.js';
+    
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    let fruits = [];
+    let normalCount = 0;
+    let goldenCount = 0;
+    let totalScore = 0;
+    
+    const fruitTypes = ['watermelon', 'apple', 'orange', 'banana', 'strawberry'];
+    
+    function getRandomFruitType() {
+      return fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
+    }
+    
+    function getRandomPosition() {
+      return {
+        x: 100 + Math.random() * 600,
+        y: 100 + Math.random() * 400
+      };
+    }
+    
+    window.spawnNormalFruit = function() {
+      const pos = getRandomPosition();
+      const fruit = new Fruit(
+        `fruit_${Date.now()}`,
+        getRandomFruitType(),
+        pos,
+        { x: 0, y: 0 }
+      );
+      fruits.push(fruit);
+      normalCount++;
+      updateStats();
+      render();
+    };
+    
+    window.spawnGoldenFruit = function() {
+      const pos = getRandomPosition();
+      const fruit = new SpecialFruit(
+        `special_${Date.now()}`,
+        getRandomFruitType(),
+        SpecialFruitType.GOLDEN,
+        pos,
+        { x: 0, y: 0 }
+      );
+      fruits.push(fruit);
+      goldenCount++;
+      updateStats();
+      render();
+    };
+    
+    window.spawnRandomFruits = function() {
+      for (let i = 0; i < 10; i++) {
+        const isSpecial = Math.random() < 0.05;
+        if (isSpecial) {
+          spawnGoldenFruit();
+        } else {
+          spawnNormalFruit();
+        }
+      }
+    };
+    
+    window.clearCanvas = function() {
+      fruits = [];
+      normalCount = 0;
+      goldenCount = 0;
+      totalScore = 0;
+      updateStats();
+      render();
+    };
+    
+    function updateStats() {
+      document.getElementById('normalCount').textContent = normalCount;
+      document.getElementById('goldenCount').textContent = goldenCount;
+      document.getElementById('totalScore').textContent = totalScore;
+    }
+    
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // 绘制背景网格
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < canvas.width; i += 50) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, canvas.height);
+        ctx.stroke();
+      }
+      for (let i = 0; i < canvas.height; i += 50) {
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(canvas.width, i);
+        ctx.stroke();
+      }
+      
+      // 渲染所有水果
+      fruits.forEach(fruit => {
+        fruit.render(ctx);
+      });
+      
+      // 显示说明
+      ctx.fillStyle = 'white';
+      ctx.font = '14px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('黄金水果会显示金色光晕和星星标识 ⭐', 10, 20);
+      ctx.fillText('黄金水果切割时获得双倍分数 (2x)', 10, 40);
+    }
+    
+    // 添加点击事件来"切割"水果
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // 检查是否点击到水果
+      for (let i = fruits.length - 1; i >= 0; i--) {
+        const fruit = fruits[i];
+        const dx = x - fruit.position.x;
+        const dy = y - fruit.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < fruit.radius) {
+          // 计算分数
+          const baseScore = 10;
+          let multiplier = 1;
+          
+          if (fruit instanceof SpecialFruit) {
+            multiplier = fruit.getScoreMultiplier();
+          }
+          
+          const score = baseScore * multiplier;
+          totalScore += score;
+          
+          // 显示分数提示
+          ctx.save();
+          ctx.fillStyle = fruit instanceof SpecialFruit ? '#FFD700' : '#00FF00';
+          ctx.font = 'bold 24px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(`+${score}`, fruit.position.x, fruit.position.y - 50);
+          ctx.restore();
+          
+          // 移除水果
+          fruits.splice(i, 1);
+          updateStats();
+          
+          // 延迟渲染以显示分数
+          setTimeout(render, 500);
+          break;
+        }
+      }
+    });
+    
+    // 初始渲染
+    render();
+    
+    // 显示欢迎信息
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 24px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('点击按钮生成水果，点击水果进行切割！', canvas.width / 2, canvas.height / 2);
+  </script>
+</body>
+</html>

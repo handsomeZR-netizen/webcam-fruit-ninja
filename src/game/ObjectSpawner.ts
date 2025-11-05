@@ -9,6 +9,7 @@ import { ObjectPool } from './ObjectPool.js';
 import { PhysicsSystem } from './PhysicsSystem.js';
 import { GameObject } from './GameObject.js';
 import { GameConfig } from '../core/GameConfig.js';
+import { SpecialFruitType } from './SpecialFruit.js';
 
 /**
  * 生成器事件回调接口
@@ -130,11 +131,24 @@ export class ObjectSpawner {
 
   /**
    * 生成水果
+   * 需求: 2.1, 2.6 - 以 5% 概率生成特殊水果
    * @returns 水果对象
    */
   private spawnFruit(): GameObject {
-    // 从对象池获取水果
-    const fruit = this.objectPool.getFruit();
+    // 检查是否生成特殊水果（5% 概率）
+    const shouldSpawnSpecial = Math.random() < 0.05;
+    
+    let fruit: GameObject;
+    
+    if (shouldSpawnSpecial) {
+      // 生成特殊水果（目前只有黄金水果）
+      const specialTypes = [SpecialFruitType.GOLDEN];
+      const randomType = specialTypes[Math.floor(Math.random() * specialTypes.length)];
+      fruit = this.objectPool.getSpecialFruit(randomType);
+    } else {
+      // 生成普通水果
+      fruit = this.objectPool.getFruit();
+    }
     
     // 生成抛出参数
     const throwParams = this.physicsSystem.generateThrowParams();

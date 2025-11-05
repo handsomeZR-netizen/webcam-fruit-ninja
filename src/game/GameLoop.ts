@@ -17,7 +17,9 @@ import { Fruit } from './Fruit.js';
 import { Bomb } from './Bomb.js';
 import { Renderer } from '../ui/Renderer.js';
 import { GameHUD } from '../ui/GameHUD.js';
+import { ComboCounterHUD } from '../ui/ComboCounterHUD.js';
 import { TutorialSystem } from '../tutorial/TutorialSystem.js';
+import { SpecialFruit } from './SpecialFruit.js';
 
 /**
  * 游戏循环回调接口
@@ -46,6 +48,7 @@ export class GameLoop {
   private ctx: CanvasRenderingContext2D;
   private renderer: Renderer;
   private gameHUD: GameHUD;
+  private comboCounterHUD: ComboCounterHUD;
   
   private isRunning: boolean;
   private animationFrameId: number | null;
@@ -82,6 +85,9 @@ export class GameLoop {
     
     // 初始化游戏 HUD
     this.gameHUD = new GameHUD(this.renderer.theme);
+    
+    // 初始化连击计数器 HUD
+    this.comboCounterHUD = new ComboCounterHUD();
     
     this.gameState = gameState;
     this.physicsSystem = physicsSystem;
@@ -271,6 +277,10 @@ export class GameLoop {
       this.performanceMonitor.endUpdate();
       return;
     }
+    
+    // 更新连击系统（检查超时）
+    // 需求: 1.3 - WHEN 玩家在2秒内未切割任何水果时，THE 连击系统 SHALL 重置连击计数器为零
+    this.gameState.comboSystem.update(Date.now());
     
     // 重置水果切割标志
     this.lastFruitSliced = false;
@@ -534,9 +544,29 @@ export class GameLoop {
       obj.onSliced(qualityMultiplier);
 
       if (obj.type === 'fruit') {
-        // 切割水果：增加分数
+        // 切割水果：记录连击并应用分数倍率
         const fruit = obj as Fruit;
-        this.gameState.addScore(this.config.fruitScore);
+        
+        // 记录连击
+        // 需求: 1.1 - WHEN 玩家在2秒内连续切割水果时，THE 连击系统 SHALL 增加连击计数器
+        this.gameState.comboSystem.recordSlice();
+        
+        // 获取连击分数倍率
+        // 需求: 1.2 - WHEN 玩家的连击数达到3次或更多时，THE 游戏系统 SHALL 应用分数倍率到后续切割的水果
+        const comboMultiplier = this.gameState.comboSystem.getScoreMultiplier();
+        
+        // 获取特殊水果分数倍率
+        // 需求: 2.2 - WHEN 玩家切割黄金水果时，THE 游戏系统 SHALL 给予玩家双倍分数奖励
+        let specialMultiplier = 1.0;
+        if (fruit instanceof SpecialFruit) {
+          specialMultiplier = fruit.getScoreMultiplier();
+        }
+        
+        // 计算最终分数（基础分数 * 连击倍率 * 特殊水果倍率）
+        const finalScore = Math.round(this.config.fruitScore * comboMultiplier * specialMultiplier);
+        
+        // 增加分数
+        this.gameState.addScore(finalScore);
         
         // 添加水果切割粒子效果到游戏状态
         if (fruit.sliceEffect) {
@@ -545,7 +575,7 @@ export class GameLoop {
         
         // 触发回调
         if (this.callbacks.onFruitSliced) {
-          this.callbacks.onFruitSliced(fruit, this.config.fruitScore);
+          this.callbacks.onFruitSliced(fruit, finalScore);
         }
 
         // 标记为死亡（将在下一帧移除）
@@ -555,8 +585,12 @@ export class GameLoop {
         }, 100);
 
       } else if (obj.type === 'bomb') {
-        // 切割炸弹：游戏结束
+        // 切割炸弹：重置连击并结束游戏
         const bomb = obj as Bomb;
+        
+        // 重置连击
+        // 需求: 1.4 - WHEN 玩家切割炸弹时，THE 连击系统 SHALL 立即重置连击计数器为零
+        this.gameState.comboSystem.resetCombo();
         
         // 添加炸弹爆炸粒子效果到游戏状态
         if (bomb.explosionEffect) {
@@ -599,6 +633,10 @@ export class GameLoop {
         const fruit = obj as Fruit;
         if (!fruit.isSliced) {
           this.gameState.loseLife();
+          
+          // 重置连击（错过水果）
+          // 需求: 1.4 - 错过水果时重置连击
+          this.gameState.comboSystem.resetCombo();
           
           // 触发回调
           if (this.callbacks.onFruitMissed) {
@@ -655,6 +693,10 @@ export class GameLoop {
 
     // 渲染 HUD（分数、生命值）
     this.renderHUD();
+
+    // 渲染连击计数器 HUD
+    // 需求: 1.5 - THE 视觉反馈系统 SHALL 在屏幕上显示当前连击数和分数倍率
+    this.renderComboCounter();
 
     // 渲染摄像头预览（右上角小窗口）
     this.renderCameraPreview();
@@ -726,6 +768,22 @@ export class GameLoop {
 
     // 渲染 HUD
     this.gameHUD.render(this.ctx, this.canvas.width, this.canvas.height);
+  }
+
+  /**
+   * 渲染连击计数器 HUD
+   * 需求: 1.5 - THE 视觉反馈系统 SHALL 在屏幕上显示当前连击数和分数倍率
+   */
+  private renderComboCounter(): void {
+    const comboCount = this.gameState.comboSystem.getComboCount();
+    const multiplier = this.gameState.comboSystem.getScoreMultiplier();
+    
+    this.comboCounterHUD.render(
+      this.ctx,
+      comboCount,
+      multiplier,
+      this.canvas.width
+    );
   }
 
   /**

@@ -6,6 +6,7 @@
 import { GameObject } from './GameObject.js';
 import { GameConfig } from '../core/GameConfig.js';
 import { ParticleEffect } from './ParticleEffect.js';
+import { ComboSystem } from './ComboSystem.js';
 
 /**
  * 游戏状态类
@@ -20,6 +21,7 @@ export class GameState {
   isGameOver: boolean;
   gameObjects: GameObject[];
   particleEffects: ParticleEffect[];
+  comboSystem: ComboSystem;
   private config: GameConfig;
   private objectIdCounter: number;
 
@@ -34,6 +36,9 @@ export class GameState {
     this.gameObjects = [];
     this.particleEffects = [];
     this.objectIdCounter = 0;
+    
+    // 初始化连击系统
+    this.comboSystem = new ComboSystem();
   }
 
   /**
@@ -159,6 +164,9 @@ export class GameState {
     this.gameObjects = [];
     this.particleEffects = [];
     this.objectIdCounter = 0;
+    
+    // 重置连击系统
+    this.comboSystem.reset();
   }
 
   /**
