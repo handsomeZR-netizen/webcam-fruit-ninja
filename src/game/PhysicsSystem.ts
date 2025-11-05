@@ -5,6 +5,7 @@
 
 import { GameObject } from './GameObject.js';
 import { GameConfig } from '../core/GameConfig.js';
+import { SpecialFruitEffectManager } from './SpecialFruitEffectManager.js';
 
 /**
  * 抛出参数接口
@@ -26,6 +27,7 @@ export class PhysicsSystem {
   private canvasHeight: number;
   private minThrowVelocity: number;
   private maxThrowVelocity: number;
+  private specialFruitEffectManager: SpecialFruitEffectManager | null;
 
   constructor(config: GameConfig) {
     this.gravity = config.gravity;
@@ -33,22 +35,42 @@ export class PhysicsSystem {
     this.canvasHeight = config.canvasHeight;
     this.minThrowVelocity = config.minThrowVelocity;
     this.maxThrowVelocity = config.maxThrowVelocity;
+    this.specialFruitEffectManager = null;
+  }
+
+  /**
+   * 设置特殊水果效果管理器
+   * 需求: 2.3 - 应用冰冻效果降低速度
+   * @param manager 特殊水果效果管理器
+   */
+  setSpecialFruitEffectManager(manager: SpecialFruitEffectManager): void {
+    this.specialFruitEffectManager = manager;
   }
 
   /**
    * 更新所有游戏对象的物理状态
+   * 需求: 2.3 - WHEN 冰冻效果激活时，降低所有水果速度 50%
    * @param gameObjects 游戏对象数组
    * @param deltaTime 时间增量（秒）
    */
   update(gameObjects: GameObject[], deltaTime: number): void {
+    // 获取冰冻效果速度倍率
+    const frozenSpeedMultiplier = this.specialFruitEffectManager 
+      ? this.specialFruitEffectManager.getFrozenSpeedMultiplier() 
+      : 1.0;
+
     for (const obj of gameObjects) {
       if (!obj.isAlive) continue;
 
       // 应用重力（只影响Y方向速度）
       obj.velocity.y += this.gravity * deltaTime;
 
+      // 应用冰冻效果（如果激活）
+      // 需求: 2.3 - 冰冻效果降低速度 50%
+      const effectiveDeltaTime = deltaTime * frozenSpeedMultiplier;
+
       // 对象自身的update方法会处理位置更新
-      obj.update(deltaTime);
+      obj.update(effectiveDeltaTime);
     }
   }
 

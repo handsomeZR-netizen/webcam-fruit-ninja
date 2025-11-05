@@ -182,6 +182,7 @@ export class SpecialFruit extends Fruit {
   /**
    * 重写 onSliced 方法，处理特殊效果
    * 需求: 2.2 - WHEN 玩家切割黄金水果时，THE 游戏系统 SHALL 给予玩家双倍分数奖励
+   * 需求: 2.3 - WHEN 玩家切割冰冻水果时，THE 游戏系统 SHALL 将所有水果的移动速度降低50%持续3秒
    */
   onSliced(qualityMultiplier: number = 1.0): void {
     // 调用父类的 onSliced 方法（创建粒子效果等）
@@ -200,5 +201,28 @@ export class SpecialFruit extends Fruit {
       return 2.0;
     }
     return 1.0;
+  }
+
+  /**
+   * 检查是否需要激活持续效果
+   * 冰冻和狂暴水果需要激活持续效果
+   */
+  shouldActivateEffect(): boolean {
+    return this.specialType === SpecialFruitType.FROZEN || 
+           this.specialType === SpecialFruitType.FRENZY;
+  }
+
+  /**
+   * 获取效果持续时间（毫秒）
+   */
+  getEffectDuration(): number {
+    switch (this.specialType) {
+      case SpecialFruitType.FROZEN:
+        return 3000; // 3秒
+      case SpecialFruitType.FRENZY:
+        return 5000; // 5秒
+      default:
+        return 0;
+    }
   }
 }

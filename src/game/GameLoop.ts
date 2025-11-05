@@ -18,6 +18,7 @@ import { Bomb } from './Bomb.js';
 import { Renderer } from '../ui/Renderer.js';
 import { GameHUD } from '../ui/GameHUD.js';
 import { ComboCounterHUD } from '../ui/ComboCounterHUD.js';
+import { FloatingScoreManager } from '../ui/FloatingScoreManager.js';
 import { TutorialSystem } from '../tutorial/TutorialSystem.js';
 import { SpecialFruit } from './SpecialFruit.js';
 
@@ -49,6 +50,7 @@ export class GameLoop {
   private renderer: Renderer;
   private gameHUD: GameHUD;
   private comboCounterHUD: ComboCounterHUD;
+  private floatingScoreManager: FloatingScoreManager;
   
   private isRunning: boolean;
   private animationFrameId: number | null;
@@ -88,6 +90,16 @@ export class GameLoop {
     
     // 初始化连击计数器 HUD
     this.comboCounterHUD = new ComboCounterHUD();
+    
+    // 初始化浮动分数管理器
+    this.floatingScoreManager = new FloatingScoreManager({
+      lifetime: 1000,
+      riseDistance: 50,
+      maxFloatingScores: 10,
+      baseFontSize: 24,
+      highScoreFontSize: 36,
+      highScoreThreshold: 20
+    });
     
     this.gameState = gameState;
     this.physicsSystem = physicsSystem;
@@ -282,6 +294,14 @@ export class GameLoop {
     // 需求: 1.3 - WHEN 玩家在2秒内未切割任何水果时，THE 连击系统 SHALL 重置连击计数器为零
     this.gameState.comboSystem.update(Date.now());
     
+    // 更新特殊水果效果管理器（检查效果过期）
+    // 需求: 2.3 - 更新冰冻和狂暴效果状态
+    this.gameState.specialFruitEffectManager.update(Date.now());
+    
+    // 更新浮动分数文本
+    // 需求: 4.1 - 更新浮动文本（上浮动画、透明度渐变）
+    this.floatingScoreManager.update(deltaTime);
+    
     // 重置水果切割标志
     this.lastFruitSliced = false;
     
@@ -455,6 +475,14 @@ export class GameLoop {
         continue;
       }
 
+      // 防止重复切割：检查水果是否已经被切割
+      if (obj.type === 'fruit') {
+        const fruit = obj as Fruit;
+        if (fruit.isSliced) {
+          continue; // 跳过已经被切割的水果
+        }
+      }
+
       obj.onSliced(qualityMultiplier);
 
       if (obj.type === 'fruit') {
@@ -540,6 +568,14 @@ export class GameLoop {
         continue;
       }
 
+      // 防止重复切割：检查水果是否已经被切割
+      if (obj.type === 'fruit') {
+        const fruit = obj as Fruit;
+        if (fruit.isSliced) {
+          continue; // 跳过已经被切割的水果
+        }
+      }
+
       // 调用对象的 onSliced 方法（会创建粒子效果）
       obj.onSliced(qualityMultiplier);
 
@@ -560,6 +596,15 @@ export class GameLoop {
         let specialMultiplier = 1.0;
         if (fruit instanceof SpecialFruit) {
           specialMultiplier = fruit.getScoreMultiplier();
+          
+          // 激活特殊水果效果（冰冻、狂暴）
+          // 需求: 2.3 - WHEN 玩家切割冰冻水果时，激活冰冻效果持续3秒
+          if (fruit.shouldActivateEffect()) {
+            this.gameState.specialFruitEffectManager.activateEffect(
+              fruit.specialType,
+              fruit.getEffectDuration()
+            );
+          }
         }
         
         // 计算最终分数（基础分数 * 连击倍率 * 特殊水果倍率）
@@ -567,6 +612,14 @@ export class GameLoop {
         
         // 增加分数
         this.gameState.addScore(finalScore);
+        
+        // 创建浮动分数文本
+        // 需求: 4.1 - WHEN 玩家切割水果时，THE 视觉反馈系统 SHALL 在切割位置显示浮动分数文本
+        this.floatingScoreManager.createFloatingScore(
+          finalScore,
+          fruit.position.x,
+          fruit.position.y
+        );
         
         // 添加水果切割粒子效果到游戏状态
         if (fruit.sliceEffect) {
@@ -697,6 +750,10 @@ export class GameLoop {
     // 渲染连击计数器 HUD
     // 需求: 1.5 - THE 视觉反馈系统 SHALL 在屏幕上显示当前连击数和分数倍率
     this.renderComboCounter();
+
+    // 渲染浮动分数文本
+    // 需求: 4.1 - 渲染所有浮动分数文本
+    this.floatingScoreManager.render(this.ctx);
 
     // 渲染摄像头预览（右上角小窗口）
     this.renderCameraPreview();
@@ -857,6 +914,7 @@ export class GameLoop {
     this.objectSpawner.reset();
     this.objectSpawner.disableTutorialMode();
     this.gameHUD.reset();
+    this.floatingScoreManager.reset();
     
     if (this.gestureTracker) {
       this.gestureTracker.clearTrail();

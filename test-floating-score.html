@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>浮动分数测试</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    
+    h1 {
+      color: white;
+      margin-bottom: 20px;
+    }
+    
+    #gameCanvas {
+      border: 3px solid white;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      cursor: crosshair;
+    }
+    
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    
+    button:hover {
+      transform: scale(1.05);
+    }
+    
+    button:active {
+      transform: scale(0.95);
+    }
+    
+    .info {
+      color: white;
+      margin-top: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎯 浮动分数测试</h1>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  
+  <div class="controls">
+    <button id="testBtn">测试浮动分数</button>
+    <button id="clearBtn">清除所有</button>
+  </div>
+  
+  <div class="info">
+    <p>点击"测试浮动分数"按钮或在画布上点击以创建浮动分数</p>
+    <p>分数会根据大小显示不同颜色和字体大小</p>
+  </div>
+
+  <script type="module">
+    import { FloatingScoreManager } from './dist/ui/FloatingScoreManager.js';
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // 创建浮动分数管理器
+    const floatingScoreManager = new FloatingScoreManager({
+      lifetime: 1500,
+      riseDistance: 80,
+      maxFloatingScores: 15,
+      baseFontSize: 24,
+      highScoreFontSize: 42,
+      highScoreThreshold: 20
+    });
+
+    let lastTime = performance.now();
+    let isRunning = true;
+
+    // 游戏循环
+    function gameLoop() {
+      if (!isRunning) return;
+
+      const currentTime = performance.now();
+      const deltaTime = (currentTime - lastTime) / 1000;
+      lastTime = currentTime;
+
+      // 清空画布
+      ctx.fillStyle = 'rgba(102, 126, 234, 0.1)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 更新和渲染浮动分数
+      floatingScoreManager.update(deltaTime);
+      floatingScoreManager.render(ctx);
+
+      // 显示当前浮动分数数量
+      ctx.fillStyle = 'white';
+      ctx.font = '16px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`浮动分数数量: ${floatingScoreManager.getCount()}`, 10, 30);
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // 开始循环
+    gameLoop();
+
+    // 测试按钮
+    document.getElementById('testBtn').addEventListener('click', () => {
+      const scores = [5, 10, 15, 20, 25, 30, 40, 50, 60];
+      const score = scores[Math.floor(Math.random() * scores.length)];
+      const x = Math.random() * (canvas.width - 100) + 50;
+      const y = Math.random() * (canvas.height - 100) + 50;
+      
+      floatingScoreManager.createFloatingScore(score, x, y);
+    });
+
+    // 清除按钮
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      floatingScoreManager.clear();
+    });
+
+    // 画布点击事件
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // 随机分数
+      const scores = [10, 15, 20, 25, 30, 40, 50];
+      const score = scores[Math.floor(Math.random() * scores.length)];
+      
+      floatingScoreManager.createFloatingScore(score, x, y);
+    });
+
+    // 自动测试：每秒创建一个随机浮动分数
+    setInterval(() => {
+      const x = Math.random() * (canvas.width - 100) + 50;
+      const y = Math.random() * (canvas.height - 100) + 50;
+      const scores = [10, 15, 20, 25, 30, 40, 50];
+      const score = scores[Math.floor(Math.random() * scores.length)];
+      
+      floatingScoreManager.createFloatingScore(score, x, y);
+    }, 2000);
+  </script>
+</body>
+</html>

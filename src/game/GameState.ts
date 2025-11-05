@@ -7,6 +7,7 @@ import { GameObject } from './GameObject.js';
 import { GameConfig } from '../core/GameConfig.js';
 import { ParticleEffect } from './ParticleEffect.js';
 import { ComboSystem } from './ComboSystem.js';
+import { SpecialFruitEffectManager } from './SpecialFruitEffectManager.js';
 
 /**
  * 游戏状态类
@@ -22,6 +23,7 @@ export class GameState {
   gameObjects: GameObject[];
   particleEffects: ParticleEffect[];
   comboSystem: ComboSystem;
+  specialFruitEffectManager: SpecialFruitEffectManager;
   private config: GameConfig;
   private objectIdCounter: number;
 
@@ -39,6 +41,9 @@ export class GameState {
     
     // 初始化连击系统
     this.comboSystem = new ComboSystem();
+    
+    // 初始化特殊水果效果管理器
+    this.specialFruitEffectManager = new SpecialFruitEffectManager();
   }
 
   /**
@@ -167,6 +172,9 @@ export class GameState {
     
     // 重置连击系统
     this.comboSystem.reset();
+    
+    // 重置特殊水果效果管理器
+    this.specialFruitEffectManager.reset();
   }
 
   /**

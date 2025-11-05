@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>多次击中修复测试</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+      font-family: 'Orbitron', monospace;
+      color: #00FFFF;
+    }
+    
+    #testCanvas {
+      border: 2px solid #00FFFF;
+      display: block;
+      margin: 20px auto;
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+      cursor: crosshair;
+    }
+    
+    .info {
+      text-align: center;
+      margin: 20px;
+      font-size: 18px;
+    }
+    
+    .status {
+      background: rgba(0, 255, 255, 0.1);
+      padding: 15px;
+      border-radius: 10px;
+      margin: 10px auto;
+      max-width: 600px;
+    }
+    
+    button {
+      background: linear-gradient(135deg, #00FFFF 0%, #0080FF 100%);
+      border: none;
+      color: #0a0e27;
+      padding: 12px 30px;
+      font-size: 16px;
+      font-family: 'Orbitron', monospace;
+      cursor: pointer;
+      border-radius: 5px;
+      margin: 5px;
+      transition: all 0.3s;
+    }
+    
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+    }
+    
+    .log {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px;
+      border-radius: 5px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+    
+    .log-entry {
+      margin: 2px 0;
+      padding: 2px 5px;
+    }
+    
+    .log-slice {
+      color: #00FF00;
+    }
+    
+    .log-skip {
+      color: #FFA500;
+    }
+  </style>
+</head>
+<body>
+  <div class="info">
+    <h1>🎯 多次击中修复测试</h1>
+    <p>拖动鼠标切割水果，验证每个水果只能被切割一次</p>
+  </div>
+  
+  <canvas id="testCanvas" width="800" height="600"></canvas>
+  
+  <div class="info">
+    <button id="spawnFruit">生成水果 🍉</button>
+    <button id="reset">重置</button>
+  </div>
+  
+  <div class="status">
+    <div>总分数: <span id="totalScore">0</span></div>
+    <div>切割次数: <span id="sliceCount">0</span></div>
+    <div>水果数量: <span id="fruitCount">0</span></div>
+    <div>鼠标按下: <span id="mouseDown">否</span></div>
+  </div>
+  
+  <div class="status">
+    <h3>事件日志:</h3>
+    <div class="log" id="eventLog"></div>
+  </div>
+  
+  <script type="module">
+    import { Fruit, FruitType } from './dist/game/Fruit.js';
+    import { CollisionDetector } from './dist/game/CollisionDetector.js';
+    import { getGameConfig } from './dist/core/GameConfig.js';
+    
+    const canvas = document.getElementById('testCanvas');
+    const ctx = canvas.getContext('2d');
+    const config = getGameConfig();
+    
+    // 创建碰撞检测器
+    const collisionDetector = new CollisionDetector(config);
+    
+    // 游戏状态
+    const fruits = [];
+    let totalScore = 0;
+    let sliceCount = 0;
+    let lastFrameTime = performance.now();
+    
+    // 鼠标轨迹
+    let mouseTrail = [];
+    let isMouseDown = false;
+    
+    // 日志
+    const eventLog = document.getElementById('eventLog');
+    function log(message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      eventLog.insertBefore(entry, eventLog.firstChild);
+      
+      // 限制日志条目数量
+      while (eventLog.children.length > 50) {
+        eventLog.removeChild(eventLog.lastChild);
+      }
+    }
+    
+    // 生成水果
+    function spawnFruit() {
+      const fruit = new Fruit(
+        `fruit_${Date.now()}`,
+        FruitType.WATERMELON,
+        { x: Math.random() * (canvas.width - 100) + 50, y: canvas.height + 50 },
+        { x: (Math.random() - 0.5) * 200, y: -400 - Math.random() * 200 },
+        0,
+        1
+      );
+      fruits.push(fruit);
+      log(`生成水果 ${fruit.id}`, 'info');
+    }
+    
+    // 按钮事件
+    document.getElementById('spawnFruit').addEventListener('click', spawnFruit);
+    
+    document.getElementById('reset').addEventListener('click', () => {
+      fruits.length = 0;
+      totalScore = 0;
+      sliceCount = 0;
+      mouseTrail = [];
+      eventLog.innerHTML = '';
+      log('游戏重置', 'info');
+    });
+    
+    // 鼠标事件
+    canvas.addEventListener('mousedown', (e) => {
+      isMouseDown = true;
+      mouseTrail = [];
+      const rect = canvas.getBoundingClientRect();
+      mouseTrail.push({
+        x: (e.clientX - rect.left) / canvas.width,
+        y: (e.clientY - rect.top) / canvas.height,
+        z: 0,
+        timestamp: Date.now()
+      });
+    });
+    
+    canvas.addEventListener('mousemove', (e) => {
+      if (isMouseDown) {
+        const rect = canvas.getBoundingClientRect();
+        mouseTrail.push({
+          x: (e.clientX - rect.left) / canvas.width,
+          y: (e.clientY - rect.top) / canvas.height,
+          z: 0,
+          timestamp: Date.now()
+        });
+        
+        // 限制轨迹长度
+        if (mouseTrail.length > 20) {
+          mouseTrail.shift();
+        }
+      }
+    });
+    
+    canvas.addEventListener('mouseup', () => {
+      isMouseDown = false;
+      mouseTrail = [];
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+      isMouseDown = false;
+      mouseTrail = [];
+    });
+    
+    // 更新状态显示
+    function updateStatus() {
+      document.getElementById('totalScore').textContent = totalScore;
+      document.getElementById('sliceCount').textContent = sliceCount;
+      document.getElementById('fruitCount').textContent = fruits.filter(f => f.isAlive).length;
+      document.getElementById('mouseDown').textContent = isMouseDown ? '是' : '否';
+    }
+    
+    // 游戏循环
+    function gameLoop() {
+      const currentTime = performance.now();
+      const deltaTime = (currentTime - lastFrameTime) / 1000;
+      lastFrameTime = currentTime;
+      
+      // 更新物理
+      for (const fruit of fruits) {
+        fruit.velocity.y += config.gravity * deltaTime;
+        fruit.update(deltaTime);
+      }
+      
+      // 碰撞检测
+      if (mouseTrail.length >= 2) {
+        const aliveObjects = fruits.filter(f => f.isAlive);
+        const slicedObjects = collisionDetector.checkSliceCollision(mouseTrail, aliveObjects);
+        
+        for (const obj of slicedObjects) {
+          const fruit = obj;
+          
+          // 关键修复：检查水果是否已经被切割
+          if (fruit.isSliced) {
+            log(`跳过已切割的水果 ${fruit.id}`, 'skip');
+            continue;
+          }
+          
+          // 切割水果
+          fruit.onSliced(1.0);
+          totalScore += 10;
+          sliceCount++;
+          log(`切割水果 ${fruit.id}，得分 +10`, 'slice');
+          
+          // 延迟销毁
+          setTimeout(() => {
+            fruit.destroy();
+          }, 500);
+        }
+      }
+      
+      // 移除超出边界的水果
+      for (let i = fruits.length - 1; i >= 0; i--) {
+        const fruit = fruits[i];
+        if (fruit.position.y > canvas.height + 100 || !fruit.isAlive) {
+          if (fruit.isAlive) {
+            log(`水果 ${fruit.id} 离开屏幕`, 'info');
+          }
+          fruits.splice(i, 1);
+        }
+      }
+      
+      // 清空画布
+      ctx.fillStyle = '#0a0e27';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // 绘制网格
+      ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < canvas.width; i += 50) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, canvas.height);
+        ctx.stroke();
+      }
+      for (let i = 0; i < canvas.height; i += 50) {
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(canvas.width, i);
+        ctx.stroke();
+      }
+      
+      // 渲染水果
+      for (const fruit of fruits) {
+        fruit.render(ctx);
+        
+        // 显示水果状态
+        ctx.save();
+        ctx.font = '12px monospace';
+        ctx.fillStyle = fruit.isSliced ? '#FF0000' : '#00FF00';
+        ctx.textAlign = 'center';
+        ctx.fillText(
+          fruit.isSliced ? '已切割' : '未切割',
+          fruit.position.x,
+          fruit.position.y - fruit.radius - 10
+        );
+        ctx.restore();
+      }
+      
+      // 渲染鼠标轨迹
+      if (mouseTrail.length > 1) {
+        ctx.strokeStyle = '#00FFFF';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#00FFFF';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        for (let i = 0; i < mouseTrail.length; i++) {
+          const point = mouseTrail[i];
+          const x = point.x * canvas.width;
+          const y = point.y * canvas.height;
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+      
+      // 更新状态显示
+      updateStatus();
+      
+      requestAnimationFrame(gameLoop);
+    }
+    
+    // 启动游戏循环
+    gameLoop();
+    
+    // 初始生成一些水果
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => spawnFruit(), i * 500);
+    }
+    
+    log('测试开始：拖动鼠标切割水果', 'info');
+    log('修复：每个水果只能被切割一次', 'info');
+  </script>
+</body>
+</html>

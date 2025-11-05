@@ -254,6 +254,14 @@ async function init() {
       }
     });
     
+    // 设置特殊水果效果管理器到物理系统
+    // 需求: 2.3 - 物理系统需要访问效果管理器以应用冰冻效果
+    physicsSystem.setSpecialFruitEffectManager(gameState.specialFruitEffectManager);
+    
+    // 设置特殊水果效果管理器到对象生成器
+    // 需求: 2.4 - 对象生成器需要访问效果管理器以应用狂暴效果
+    objectSpawner.setSpecialFruitEffectManager(gameState.specialFruitEffectManager);
+    
     // 初始化教程系统
     // 需求: 8.1, 8.3, 8.4 - 教程系统集成
     const tutorialSystem = new TutorialSystem({

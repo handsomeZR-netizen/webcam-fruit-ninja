@@ -65,7 +65,12 @@
 
 ## 第二批任务（P1 - 重要，尽快实现）
 
-- [ ] 5. 实现浮动分数文本
+- [x] 5. 实现浮动分数文本
+
+
+
+
+
   - 创建 `src/ui/FloatingScoreManager.ts` 文件
   - 定义 `FloatingScoreText` 接口（分数、位置、透明度、生命周期）
   - 实现 `createFloatingScore()` 方法创建浮动文本
@@ -76,7 +81,12 @@
   - 在 `GameLoop.render()` 中调用 `floatingScoreManager.render()`
   - _需求: 4.1_
 
-- [ ] 6. 实现特殊水果效果管理器
+
+- [x] 6. 实现特殊水果效果管理器
+
+
+
+
   - 创建 `src/game/SpecialFruitEffectManager.ts` 文件
   - 定义 `SpecialFruitEffect` 接口（类型、持续时间、开始时间、是否激活）
   - 实现 `activateEffect()` 方法激活特殊效果
@@ -85,8 +95,13 @@
   - 实现 `getRemainingTime()` 方法获取剩余时间
   - 在 `GameState` 中添加 `specialFruitEffectManager` 属性
   - _需求: 2.3, 2.4_
+-
 
-- [ ] 7. 实现冰冻水果
+- [x] 7. 实现冰冻水果
+
+
+
+
   - 在 `SpecialFruit` 中添加冰冻水果类型
   - 为冰冻水果添加蓝色冰晶视觉效果（颜色 #00BFFF）
   - 在 `ObjectSpawner.spawnFruit()` 中添加冰冻水果生成逻辑
@@ -94,8 +109,13 @@
   - 在 `PhysicsSystem.update()` 中检查冰冻效果并降低速度 50%
   - 在 `GameLoop.update()` 中调用 `specialFruitEffectManager.update()`
   - _需求: 2.1, 2.3, 2.6_
+-
 
-- [ ] 8. 实现狂暴水果
+- [x] 8. 实现狂暴水果
+
+
+
+
   - 在 `SpecialFruit` 中添加狂暴水果类型
   - 为狂暴水果添加红色火焰视觉效果（颜色 #FF4500）
   - 在 `ObjectSpawner.spawnFruit()` 中添加狂暴水果生成逻辑

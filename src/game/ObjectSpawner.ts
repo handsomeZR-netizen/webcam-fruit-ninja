@@ -10,6 +10,7 @@ import { PhysicsSystem } from './PhysicsSystem.js';
 import { GameObject } from './GameObject.js';
 import { GameConfig } from '../core/GameConfig.js';
 import { SpecialFruitType } from './SpecialFruit.js';
+import { SpecialFruitEffectManager } from './SpecialFruitEffectManager.js';
 
 /**
  * 生成器事件回调接口
@@ -26,6 +27,7 @@ export class ObjectSpawner {
   private physicsSystem: PhysicsSystem;
   private config: GameConfig;
   private callbacks: SpawnerCallbacks;
+  private specialFruitEffectManager: SpecialFruitEffectManager | null;
   
   private isActive: boolean;
   private nextSpawnTime: number;
@@ -45,6 +47,7 @@ export class ObjectSpawner {
     this.physicsSystem = physicsSystem;
     this.config = config;
     this.callbacks = callbacks;
+    this.specialFruitEffectManager = null;
     
     this.isActive = false;
     this.nextSpawnTime = 0;
@@ -141,8 +144,8 @@ export class ObjectSpawner {
     let fruit: GameObject;
     
     if (shouldSpawnSpecial) {
-      // 生成特殊水果（目前只有黄金水果）
-      const specialTypes = [SpecialFruitType.GOLDEN];
+      // 生成特殊水果（黄金、冰冻、狂暴）
+      const specialTypes = [SpecialFruitType.GOLDEN, SpecialFruitType.FROZEN, SpecialFruitType.FRENZY];
       const randomType = specialTypes[Math.floor(Math.random() * specialTypes.length)];
       fruit = this.objectPool.getSpecialFruit(randomType);
     } else {
@@ -188,6 +191,7 @@ export class ObjectSpawner {
 
   /**
    * 获取随机生成间隔（秒）
+   * 需求: 2.4 - WHEN 玩家切割狂暴水果时，THE 游戏系统 SHALL 在接下来的5秒内增加水果生成频率
    * @returns 生成间隔时间
    */
   private getRandomSpawnInterval(): number {
@@ -195,7 +199,17 @@ export class ObjectSpawner {
     // 将毫秒转换为秒
     const minSeconds = minInterval / 1000;
     const maxSeconds = maxInterval / 1000;
-    return minSeconds + Math.random() * (maxSeconds - minSeconds);
+    let interval = minSeconds + Math.random() * (maxSeconds - minSeconds);
+    
+    // 应用狂暴效果：生成频率提高 100%（间隔时间减半）
+    if (this.specialFruitEffectManager) {
+      const frenzyMultiplier = this.specialFruitEffectManager.getFrenzySpawnMultiplier();
+      if (frenzyMultiplier > 1.0) {
+        interval = interval / frenzyMultiplier;
+      }
+    }
+    
+    return interval;
   }
 
   /**
@@ -280,5 +294,14 @@ export class ObjectSpawner {
    */
   isTutorialMode(): boolean {
     return this.tutorialMode;
+  }
+
+  /**
+   * 设置特殊水果效果管理器
+   * 需求: 2.4 - 需要访问效果管理器以检查狂暴效果
+   * @param manager 特殊水果效果管理器
+   */
+  setSpecialFruitEffectManager(manager: SpecialFruitEffectManager): void {
+    this.specialFruitEffectManager = manager;
   }
 }
