@@ -8,6 +8,8 @@ import { GameConfig } from '../core/GameConfig.js';
 import { ParticleEffect } from './ParticleEffect.js';
 import { ComboSystem } from './ComboSystem.js';
 import { SpecialFruitEffectManager } from './SpecialFruitEffectManager.js';
+import { DifficultyManager } from './DifficultyManager.js';
+import { AchievementTracker } from './AchievementTracker.js';
 
 /**
  * 游戏状态类
@@ -24,6 +26,8 @@ export class GameState {
   particleEffects: ParticleEffect[];
   comboSystem: ComboSystem;
   specialFruitEffectManager: SpecialFruitEffectManager;
+  difficultyManager: DifficultyManager;
+  achievementTracker: AchievementTracker;
   private config: GameConfig;
   private objectIdCounter: number;
 
@@ -44,6 +48,18 @@ export class GameState {
     
     // 初始化特殊水果效果管理器
     this.specialFruitEffectManager = new SpecialFruitEffectManager();
+    
+    // 初始化难度管理器
+    this.difficultyManager = new DifficultyManager();
+    
+    // 初始化成就追踪器
+    // 需求: 5.1, 5.2 - 追踪玩家统计数据和成就解锁
+    this.achievementTracker = new AchievementTracker();
+    
+    // 设置连击系统的最高连击更新回调
+    this.comboSystem.setMaxComboUpdateCallback((combo: number) => {
+      this.achievementTracker.updateMaxCombo(combo);
+    });
   }
 
   /**
@@ -136,6 +152,10 @@ export class GameState {
     this.isPlaying = true;
     this.isPaused = false;
     this.isGameOver = false;
+    
+    // 记录游戏开始
+    // 需求: 5.2 - 追踪游戏局数
+    this.achievementTracker.recordGameStart();
   }
 
   /**
@@ -175,6 +195,9 @@ export class GameState {
     
     // 重置特殊水果效果管理器
     this.specialFruitEffectManager.reset();
+    
+    // 重置难度管理器
+    this.difficultyManager.reset();
   }
 
   /**

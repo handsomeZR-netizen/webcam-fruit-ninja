@@ -262,6 +262,14 @@ async function init() {
     // 需求: 2.4 - 对象生成器需要访问效果管理器以应用狂暴效果
     objectSpawner.setSpecialFruitEffectManager(gameState.specialFruitEffectManager);
     
+    // 设置难度管理器到物理系统
+    // 需求: 3.2 - 物理系统需要访问难度管理器以应用速度倍率
+    physicsSystem.setDifficultyManager(gameState.difficultyManager);
+    
+    // 设置难度管理器到对象生成器
+    // 需求: 3.1 - 对象生成器需要访问难度管理器以应用生成速率倍率
+    objectSpawner.setDifficultyManager(gameState.difficultyManager);
+    
     // 初始化教程系统
     // 需求: 8.1, 8.3, 8.4 - 教程系统集成
     const tutorialSystem = new TutorialSystem({

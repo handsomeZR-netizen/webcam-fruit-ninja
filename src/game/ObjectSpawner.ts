@@ -28,6 +28,7 @@ export class ObjectSpawner {
   private config: GameConfig;
   private callbacks: SpawnerCallbacks;
   private specialFruitEffectManager: SpecialFruitEffectManager | null;
+  private difficultyManager: any | null;
   
   private isActive: boolean;
   private nextSpawnTime: number;
@@ -48,6 +49,7 @@ export class ObjectSpawner {
     this.config = config;
     this.callbacks = callbacks;
     this.specialFruitEffectManager = null;
+    this.difficultyManager = null;
     
     this.isActive = false;
     this.nextSpawnTime = 0;
@@ -192,6 +194,7 @@ export class ObjectSpawner {
   /**
    * 获取随机生成间隔（秒）
    * 需求: 2.4 - WHEN 玩家切割狂暴水果时，THE 游戏系统 SHALL 在接下来的5秒内增加水果生成频率
+   * 需求: 3.1 - 应用难度系统的生成速率倍率
    * @returns 生成间隔时间
    */
   private getRandomSpawnInterval(): number {
@@ -200,6 +203,15 @@ export class ObjectSpawner {
     const minSeconds = minInterval / 1000;
     const maxSeconds = maxInterval / 1000;
     let interval = minSeconds + Math.random() * (maxSeconds - minSeconds);
+    
+    // 应用难度系统的生成速率倍率
+    // 需求: 3.1 - WHEN 玩家的分数每增加100分时，THE 难度系统 SHALL 增加水果生成速率10%
+    if (this.difficultyManager) {
+      const difficultyMultiplier = this.difficultyManager.getSpawnRateMultiplier();
+      if (difficultyMultiplier > 1.0) {
+        interval = interval / difficultyMultiplier;
+      }
+    }
     
     // 应用狂暴效果：生成频率提高 100%（间隔时间减半）
     if (this.specialFruitEffectManager) {
@@ -303,5 +315,14 @@ export class ObjectSpawner {
    */
   setSpecialFruitEffectManager(manager: SpecialFruitEffectManager): void {
     this.specialFruitEffectManager = manager;
+  }
+
+  /**
+   * 设置难度管理器
+   * 需求: 3.1 - 需要访问难度管理器以应用生成速率倍率
+   * @param manager 难度管理器
+   */
+  setDifficultyManager(manager: any): void {
+    this.difficultyManager = manager;
   }
 }

@@ -12,6 +12,7 @@ import { ObjectSpawner } from './ObjectSpawner.js';
 import { GestureTracker } from '../gesture/GestureTracker.js';
 import { GameConfig } from '../core/GameConfig.js';
 import { PerformanceMonitor } from '../core/PerformanceMonitor.js';
+import { PerformanceOptimizer, PerformanceSettings } from '../core/PerformanceOptimizer.js';
 import { GameObject } from './GameObject.js';
 import { Fruit } from './Fruit.js';
 import { Bomb } from './Bomb.js';
@@ -19,6 +20,10 @@ import { Renderer } from '../ui/Renderer.js';
 import { GameHUD } from '../ui/GameHUD.js';
 import { ComboCounterHUD } from '../ui/ComboCounterHUD.js';
 import { FloatingScoreManager } from '../ui/FloatingScoreManager.js';
+import { ComboMilestoneAnimator } from '../ui/ComboMilestoneAnimator.js';
+import { EffectIndicatorRenderer } from '../ui/EffectIndicatorRenderer.js';
+import { DifficultyNotificationRenderer } from '../ui/DifficultyNotificationRenderer.js';
+import { AchievementNotificationRenderer } from '../ui/AchievementNotificationRenderer.js';
 import { TutorialSystem } from '../tutorial/TutorialSystem.js';
 import { SpecialFruit } from './SpecialFruit.js';
 
@@ -51,13 +56,19 @@ export class GameLoop {
   private gameHUD: GameHUD;
   private comboCounterHUD: ComboCounterHUD;
   private floatingScoreManager: FloatingScoreManager;
+  private comboMilestoneAnimator: ComboMilestoneAnimator;
+  private effectIndicatorRenderer: EffectIndicatorRenderer;
+  private difficultyNotificationRenderer: DifficultyNotificationRenderer;
+  private achievementNotificationRenderer: AchievementNotificationRenderer;
   
   private isRunning: boolean;
   private animationFrameId: number | null;
   private lastFrameTime: number;
   
-  // 性能监控
+  // 性能监控和优化
   private performanceMonitor: PerformanceMonitor;
+  private performanceOptimizer: PerformanceOptimizer;
+  private currentPerformanceSettings: PerformanceSettings;
   
   // 教程系统
   private tutorialSystem: TutorialSystem | null;
@@ -101,6 +112,56 @@ export class GameLoop {
       highScoreThreshold: 20
     });
     
+    // 初始化连击里程碑动画器
+    this.comboMilestoneAnimator = new ComboMilestoneAnimator({
+      pulseDuration: 1500,
+      explosionDuration: 2000,
+      rainbowDuration: 1500,
+      particleCount: 30
+    });
+    
+    // 初始化特殊效果指示器渲染器
+    this.effectIndicatorRenderer = new EffectIndicatorRenderer({
+      size: 80,
+      padding: 20,
+      borderWidth: 3,
+      iconSize: 32,
+      fontSize: 14
+    });
+    
+    // 初始化难度提升通知渲染器
+    this.difficultyNotificationRenderer = new DifficultyNotificationRenderer({
+      displayDuration: 2000,
+      fadeInDuration: 300,
+      fadeOutDuration: 500,
+      fontSize: 36,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      textColor: '#FFD700',
+      borderColor: '#FFD700',
+      borderWidth: 3,
+      padding: 30
+    });
+    
+    // 初始化成就通知渲染器
+    // 需求: 5.4 - THE 视觉反馈系统 SHALL 在玩家解锁成就时显示成就通知
+    this.achievementNotificationRenderer = new AchievementNotificationRenderer({
+      displayDuration: 3000,
+      slideInDuration: 500,
+      fadeOutDuration: 500,
+      width: 350,
+      height: 100,
+      padding: 20,
+      margin: 20,
+      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+      borderColor: '#FFD700',
+      borderWidth: 3,
+      iconSize: 48,
+      titleFontSize: 24,
+      descriptionFontSize: 16,
+      titleColor: '#FFD700',
+      descriptionColor: '#FFFFFF'
+    });
+    
     this.gameState = gameState;
     this.physicsSystem = physicsSystem;
     this.collisionDetector = collisionDetector;
@@ -122,6 +183,27 @@ export class GameLoop {
       maxObjectCount: 50,
       maxParticleCount: 200,
       sampleInterval: 1000
+    });
+    
+    // 初始化性能优化器
+    this.performanceOptimizer = new PerformanceOptimizer(this.performanceMonitor, {
+      enabled: true,
+      checkInterval: 2000,
+      fpsThresholds: {
+        ultra: 55,
+        high: 45,
+        medium: 35,
+        low: 25
+      },
+      stabilizationFrames: 30
+    });
+    
+    // 获取初始性能设置
+    this.currentPerformanceSettings = this.performanceOptimizer.getCurrentSettings();
+    
+    // 注册性能质量变化回调
+    this.performanceOptimizer.onQualityChange((_quality, settings) => {
+      this.applyPerformanceSettings(settings);
     });
     
     this.tutorialSystem = null;
@@ -274,6 +356,9 @@ export class GameLoop {
     
     // 检测性能瓶颈
     this.performanceMonitor.detectBottlenecks();
+    
+    // 更新性能优化器（自动调整质量）
+    this.performanceOptimizer.update();
   };
 
   /**
@@ -290,6 +375,10 @@ export class GameLoop {
       return;
     }
     
+    // 更新游戏时长（转换为毫秒）
+    // 需求: 5.1 - 追踪总游戏时长
+    this.gameState.achievementTracker.updatePlayTime(deltaTime * 1000);
+    
     // 更新连击系统（检查超时）
     // 需求: 1.3 - WHEN 玩家在2秒内未切割任何水果时，THE 连击系统 SHALL 重置连击计数器为零
     this.gameState.comboSystem.update(Date.now());
@@ -298,9 +387,41 @@ export class GameLoop {
     // 需求: 2.3 - 更新冰冻和狂暴效果状态
     this.gameState.specialFruitEffectManager.update(Date.now());
     
+    // 更新动态难度系统
+    // 需求: 3.1, 3.2 - 根据当前分数更新难度
+    const hasLeveledUp = this.gameState.difficultyManager.update(this.gameState.score);
+    
+    // 如果难度提升，显示通知
+    // 需求: 3.5 - THE 视觉反馈系统 SHALL 在难度等级提升时显示通知消息
+    if (hasLeveledUp) {
+      const currentLevel = this.gameState.difficultyManager.getDifficultyLevel();
+      this.difficultyNotificationRenderer.showNotification(currentLevel);
+    }
+    
+    // 更新难度提升通知
+    this.difficultyNotificationRenderer.update();
+    
+    // 定期检查成就解锁
+    // 需求: 5.2 - 达成特定里程碑时解锁成就
+    const newlyUnlockedAchievements = this.gameState.achievementTracker.checkAchievements();
+    // 需求: 5.4 - 显示成就通知
+    if (newlyUnlockedAchievements.length > 0) {
+      newlyUnlockedAchievements.forEach(achievement => {
+        this.achievementNotificationRenderer.showNotification(achievement);
+      });
+    }
+    
+    // 更新成就通知
+    // 需求: 5.4 - 显示时长 3 秒后淡出
+    this.achievementNotificationRenderer.update();
+    
     // 更新浮动分数文本
     // 需求: 4.1 - 更新浮动文本（上浮动画、透明度渐变）
     this.floatingScoreManager.update(deltaTime);
+    
+    // 更新连击里程碑动画
+    // 需求: 4.2 - 更新里程碑动画状态
+    this.comboMilestoneAnimator.update(deltaTime);
     
     // 重置水果切割标志
     this.lastFruitSliced = false;
@@ -583,9 +704,20 @@ export class GameLoop {
         // 切割水果：记录连击并应用分数倍率
         const fruit = obj as Fruit;
         
+        // 记录水果切割到成就追踪器
+        // 需求: 5.1 - 追踪总切割水果数
+        this.gameState.achievementTracker.recordFruitSliced();
+        
         // 记录连击
         // 需求: 1.1 - WHEN 玩家在2秒内连续切割水果时，THE 连击系统 SHALL 增加连击计数器
         this.gameState.comboSystem.recordSlice();
+        
+        // 检查是否达到里程碑并触发动画
+        // 需求: 4.2 - WHEN 玩家达到新的连击里程碑时，显示特殊动画效果
+        const milestone = this.gameState.comboSystem.checkMilestone();
+        if (milestone !== null) {
+          this.comboMilestoneAnimator.triggerMilestone(milestone);
+        }
         
         // 获取连击分数倍率
         // 需求: 1.2 - WHEN 玩家的连击数达到3次或更多时，THE 游戏系统 SHALL 应用分数倍率到后续切割的水果
@@ -641,6 +773,10 @@ export class GameLoop {
         // 切割炸弹：重置连击并结束游戏
         const bomb = obj as Bomb;
         
+        // 记录炸弹切割到成就追踪器
+        // 需求: 5.1 - 追踪总切割炸弹数
+        this.gameState.achievementTracker.recordBombHit();
+        
         // 重置连击
         // 需求: 1.4 - WHEN 玩家切割炸弹时，THE 连击系统 SHALL 立即重置连击计数器为零
         this.gameState.comboSystem.resetCombo();
@@ -687,6 +823,10 @@ export class GameLoop {
         if (!fruit.isSliced) {
           this.gameState.loseLife();
           
+          // 记录错过的水果
+          // 需求: 5.3 - 追踪完美游戏（不错过水果）
+          this.gameState.achievementTracker.recordFruitMissed();
+          
           // 重置连击（错过水果）
           // 需求: 1.4 - 错过水果时重置连击
           this.gameState.comboSystem.resetCombo();
@@ -708,6 +848,16 @@ export class GameLoop {
     // 防止重复调用
     if (this.gameState.isGameOver && !this.isRunning) {
       return;
+    }
+    
+    // 检查是否为完美游戏
+    // 需求: 5.3 - 完美主义者成就（一局游戏不失误）
+    this.gameState.achievementTracker.checkAndRecordPerfectGame();
+    
+    // 最后检查一次成就
+    const finalAchievements = this.gameState.achievementTracker.checkAchievements();
+    if (finalAchievements.length > 0) {
+      console.log('游戏结束时解锁成就:', finalAchievements.map(a => a.name).join(', '));
     }
     
     this.stop();
@@ -753,7 +903,42 @@ export class GameLoop {
 
     // 渲染浮动分数文本
     // 需求: 4.1 - 渲染所有浮动分数文本
-    this.floatingScoreManager.render(this.ctx);
+    // 性能优化: 根据质量设置调整阴影
+    this.floatingScoreManager.render(this.ctx, this.currentPerformanceSettings.shadowQuality);
+
+    // 渲染连击里程碑动画（根据性能设置）
+    // 需求: 4.2 - 渲染里程碑动画（脉冲、爆炸、彩虹）
+    if (this.currentPerformanceSettings.enableMilestoneAnimations) {
+      this.comboMilestoneAnimator.render(this.ctx, this.canvas.width, this.canvas.height);
+    }
+
+    // 渲染特殊效果指示器（根据性能设置）
+    // 需求: 4.3 - WHEN 玩家激活特殊水果效果时，显示效果指示器
+    if (this.currentPerformanceSettings.enableEffectIndicators) {
+      const activeEffects = this.gameState.specialFruitEffectManager.getActiveEffects();
+      this.effectIndicatorRenderer.renderIndicators(
+        this.ctx,
+        activeEffects,
+        this.canvas.width,
+        this.canvas.height
+      );
+    }
+
+    // 渲染难度提升通知
+    // 需求: 3.5 - THE 视觉反馈系统 SHALL 在难度等级提升时显示通知消息
+    this.difficultyNotificationRenderer.render(
+      this.ctx,
+      this.canvas.width,
+      this.canvas.height
+    );
+
+    // 渲染成就通知
+    // 需求: 5.4 - THE 视觉反馈系统 SHALL 在玩家解锁成就时显示成就通知
+    this.achievementNotificationRenderer.render(
+      this.ctx,
+      this.canvas.width,
+      this.canvas.height
+    );
 
     // 渲染摄像头预览（右上角小窗口）
     this.renderCameraPreview();
@@ -915,6 +1100,9 @@ export class GameLoop {
     this.objectSpawner.disableTutorialMode();
     this.gameHUD.reset();
     this.floatingScoreManager.reset();
+    this.comboMilestoneAnimator.reset();
+    this.difficultyNotificationRenderer.reset();
+    this.achievementNotificationRenderer.reset();
     
     if (this.gestureTracker) {
       this.gestureTracker.clearTrail();
@@ -926,5 +1114,37 @@ export class GameLoop {
    */
   getTutorialSystem(): TutorialSystem | null {
     return this.tutorialSystem;
+  }
+
+  /**
+   * 应用性能设置
+   * 需求: 7.1 - 实现性能降级策略
+   */
+  private applyPerformanceSettings(settings: PerformanceSettings): void {
+    console.log('应用性能设置:', settings);
+    
+    this.currentPerformanceSettings = settings;
+    
+    // 更新浮动分数管理器
+    this.floatingScoreManager.setMaxFloatingScores(settings.maxFloatingScores);
+    
+    // 更新性能监控器配置
+    this.performanceMonitor.updateConfig({
+      maxParticleCount: settings.maxParticles
+    });
+  }
+
+  /**
+   * 获取性能优化器
+   */
+  getPerformanceOptimizer(): PerformanceOptimizer {
+    return this.performanceOptimizer;
+  }
+
+  /**
+   * 获取性能建议
+   */
+  getPerformanceRecommendations(): string[] {
+    return this.performanceOptimizer.getPerformanceRecommendations();
   }
 }

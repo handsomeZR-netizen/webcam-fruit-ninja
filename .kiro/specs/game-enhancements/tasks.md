@@ -32,7 +32,9 @@
   - 在切割炸弹时调用 `comboSystem.resetCombo()`
   - 在错过水果时调用 `comboSystem.resetCombo()`
   - _需求: 1.1, 1.2, 1.3, 1.4_
-- [x] 3. 实现连击 HUD 显示
+- [ ] 3. 实现连击 HUD 显示
+
+
 
 
 
@@ -125,7 +127,11 @@
 
 ## 第三批任务（P1-P2 - 有时间再做）
 
-- [ ] 9. 实现动态难度系统核心
+- [x] 9. 实现动态难度系统核心
+
+
+
+
   - 创建 `src/game/DifficultyManager.ts` 文件
   - 定义 `DifficultyConfig` 接口
   - 实现难度等级计算逻辑（基于分数阈值）
@@ -136,21 +142,35 @@
   - 在 `GameState` 中添加 `difficultyManager` 属性
   - _需求: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 10. 集成动态难度系统
+- [x] 10. 集成动态难度系统
+
+
+
+
   - 在 `GameLoop.update()` 中调用 `difficultyManager.update(gameState.score)`
   - 在 `ObjectSpawner.getRandomSpawnInterval()` 中应用生成速率倍率
   - 在 `PhysicsSystem.generateThrowParams()` 中应用速度倍率
   - 在难度升级时触发视觉通知（可选）
   - _需求: 3.1, 3.2_
 
-- [ ] 11. 优化特殊水果视觉效果
+
+- [x] 11. 优化特殊水果视觉效果
+
+
+
+
   - 为黄金水果添加闪烁效果
   - 为冰冻水果添加冰晶粒子效果
   - 为狂暴水果添加火焰粒子效果
   - 优化渲染性能（使用简单几何图形）
   - _需求: 2.6_
 
-- [ ] 12. 实现连击里程碑动画
+- [x] 12. 实现连击里程碑动画
+
+
+
+
+
   - 创建 `src/ui/ComboMilestoneAnimator.ts` 文件
   - 定义 `ComboMilestone` 接口
   - 实现 5 连击脉冲动画（绿色光环）
@@ -162,7 +182,12 @@
 
 ## 第四批任务（P2-P3 - 可选，不着急）
 
-- [ ] 13. 实现特殊效果指示器
+
+- [x] 13. 实现特殊效果指示器
+
+
+
+
   - 创建 `src/ui/EffectIndicatorRenderer.ts` 文件
   - 定义 `EffectIndicator` 接口
   - 实现效果指示器渲染（屏幕边缘显示）
@@ -172,14 +197,25 @@
   - 在 `GameLoop.render()` 中调用渲染器
   - _需求: 4.3_
 
-- [ ] 14. 实现难度提升通知
+- [x] 14. 实现难度提升通知
+
+
+
+
+
   - 创建难度提升视觉通知组件
   - 在难度等级提升时显示通知消息
   - 显示当前难度等级
   - 实现淡入淡出动画
   - _需求: 3.5_
+-
 
-- [ ] 15. 实现成就系统核心
+- [x] 15. 实现成就系统核心
+
+
+
+
+
   - 创建 `src/game/AchievementTracker.ts` 文件
   - 定义 `PlayerStats` 接口（总切割数、最高连击、游戏时长等）
   - 定义 `Achievement` 接口（ID、名称、描述、解锁条件）
@@ -190,7 +226,13 @@
   - 实现数据验证逻辑
   - _需求: 5.1, 5.2, 5.3, 5.5_
 
-- [ ] 16. 集成成就系统
+- [x] 16. 集成成就系统
+
+
+
+
+
+
   - 在 `GameState` 中添加 `achievementTracker` 属性
   - 在 `GameLoop.handleSlicedObjects()` 中记录水果切割
   - 在 `GameLoop.update()` 中更新游戏时长
@@ -199,8 +241,14 @@
   - 游戏结束时检查是否为完美游戏
   - 定期调用 `checkAchievements()` 检查新解锁
   - _需求: 5.1, 5.2_
+-
 
-- [ ] 17. 实现成就通知 UI
+- [x] 17. 实现成就通知 UI
+
+
+
+
+
   - 创建 `src/ui/AchievementNotificationRenderer.ts` 文件
   - 定义 `AchievementNotification` 接口
   - 实现成就通知显示（右下角）
@@ -212,7 +260,13 @@
 
 ## 配置任务（贯穿所有阶段）
 
-- [ ] 18. 扩展游戏配置
+- [x] 18. 扩展游戏配置
+
+
+
+
+
+
   - 在 `src/core/GameConfig.ts` 中添加新配置项
   - 添加 `combo` 配置（超时时间、阈值、最大倍率）
   - 添加 `specialFruit` 配置（生成概率、效果参数）
@@ -224,14 +278,29 @@
 
 ## 测试任务（可选）
 
-- [ ]* 19. 编写单元测试
+-
+
+- [ ] 19. 编写单元测试
+
+
+
+
+
   - 为 ComboSystem 编写单元测试
   - 为 SpecialFruitEffectManager 编写单元测试
   - 为 DifficultyManager 编写单元测试
   - 为 AchievementTracker 编写单元测试
   - 测试边界条件和错误处理
 
-- [ ]* 20. 性能测试和优化
+- [x] 20. 性能测试和优化
+
+
+
+
+
+
+
+
   - 使用 PerformanceMonitor 监控新功能性能
   - 确保帧率保持在 30+ FPS
   - 优化浮动分数渲染

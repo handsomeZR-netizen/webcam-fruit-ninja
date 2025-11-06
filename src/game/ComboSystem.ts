@@ -34,6 +34,7 @@ export class ComboSystem {
   private lastSliceTime: number;
   private config: ComboSystemConfig;
   private cachedMultiplier: number | null;
+  private onMaxComboUpdate?: (combo: number) => void;
 
   /**
    * 构造函数
@@ -44,6 +45,15 @@ export class ComboSystem {
     this.comboCount = 0;
     this.lastSliceTime = 0;
     this.cachedMultiplier = null;
+  }
+
+  /**
+   * 设置最高连击更新回调
+   * 需求: 5.1 - 更新最高连击数
+   * @param callback 回调函数
+   */
+  setMaxComboUpdateCallback(callback: (combo: number) => void): void {
+    this.onMaxComboUpdate = callback;
   }
 
   /**
@@ -66,6 +76,12 @@ export class ComboSystem {
     
     // 清除缓存的倍率，需要重新计算
     this.cachedMultiplier = null;
+    
+    // 通知最高连击更新
+    // 需求: 5.1 - 更新最高连击数
+    if (this.onMaxComboUpdate) {
+      this.onMaxComboUpdate(this.comboCount);
+    }
   }
 
   /**

@@ -203,10 +203,12 @@ export class FloatingScoreManager {
   /**
    * 渲染所有浮动文本
    * 需求: 4.1 - 渲染浮动分数文本
+   * 性能优化: 批量渲染，减少状态切换
    * 
    * @param ctx Canvas 渲染上下文
+   * @param shadowQuality 阴影质量 (0-1)，默认 1.0
    */
-  render(ctx: CanvasRenderingContext2D): void {
+  render(ctx: CanvasRenderingContext2D, shadowQuality: number = 1.0): void {
     if (this.floatingTexts.length === 0) {
       return;
     }
@@ -217,31 +219,37 @@ export class FloatingScoreManager {
     // 设置文本对齐方式
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = 'bold 24px Orbitron, Arial, sans-serif';
 
-    // 批量渲染所有浮动文本
+    // 根据质量设置阴影
+    if (shadowQuality > 0) {
+      ctx.shadowColor = `rgba(0, 0, 0, ${0.5 * shadowQuality})`;
+      ctx.shadowBlur = 4 * shadowQuality;
+      ctx.shadowOffsetX = 2 * shadowQuality;
+      ctx.shadowOffsetY = 2 * shadowQuality;
+    }
+
+    // 按字体大小分组渲染（减少字体切换）
+    const textsBySize = new Map<number, FloatingScoreText[]>();
     for (const text of this.floatingTexts) {
       if (!text.isAlive) {
         continue;
       }
+      
+      if (!textsBySize.has(text.fontSize)) {
+        textsBySize.set(text.fontSize, []);
+      }
+      textsBySize.get(text.fontSize)!.push(text);
+    }
 
-      // 设置透明度
-      ctx.globalAlpha = text.opacity;
+    // 批量渲染每个字体大小的文本
+    for (const [fontSize, texts] of textsBySize) {
+      ctx.font = `bold ${fontSize}px Orbitron, Arial, sans-serif`;
       
-      // 设置字体大小
-      ctx.font = `bold ${text.fontSize}px Orbitron, Arial, sans-serif`;
-      
-      // 设置颜色
-      ctx.fillStyle = text.color;
-      
-      // 添加文本阴影以提高可读性
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-      ctx.shadowBlur = 4;
-      ctx.shadowOffsetX = 2;
-      ctx.shadowOffsetY = 2;
-      
-      // 渲染分数文本
-      ctx.fillText(`+${text.score}`, Math.round(text.x), Math.round(text.y));
+      for (const text of texts) {
+        ctx.globalAlpha = text.opacity;
+        ctx.fillStyle = text.color;
+        ctx.fillText(`+${text.score}`, Math.round(text.x), Math.round(text.y));
+      }
     }
 
     // 恢复状态
@@ -264,6 +272,21 @@ export class FloatingScoreManager {
    */
   getCount(): number {
     return this.floatingTexts.filter(t => t.isAlive).length;
+  }
+
+  /**
+   * 设置最大浮动分数数量（用于性能优化）
+   */
+  setMaxFloatingScores(max: number): void {
+    this.config.maxFloatingScores = max;
+    
+    // 如果当前数量超过新限制，移除多余的
+    while (this.floatingTexts.length > max) {
+      const removed = this.floatingTexts.shift();
+      if (removed) {
+        this.releaseToPool(removed);
+      }
+    }
   }
 
   /**

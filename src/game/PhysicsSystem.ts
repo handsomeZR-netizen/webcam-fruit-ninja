@@ -28,6 +28,7 @@ export class PhysicsSystem {
   private minThrowVelocity: number;
   private maxThrowVelocity: number;
   private specialFruitEffectManager: SpecialFruitEffectManager | null;
+  private difficultyManager: any | null;
 
   constructor(config: GameConfig) {
     this.gravity = config.gravity;
@@ -36,6 +37,7 @@ export class PhysicsSystem {
     this.minThrowVelocity = config.minThrowVelocity;
     this.maxThrowVelocity = config.maxThrowVelocity;
     this.specialFruitEffectManager = null;
+    this.difficultyManager = null;
   }
 
   /**
@@ -116,6 +118,7 @@ export class PhysicsSystem {
 
   /**
    * 生成随机抛出参数
+   * 需求: 3.2 - 应用难度系统的速度倍率
    * @returns 抛出参数
    */
   generateThrowParams(): ThrowParams {
@@ -124,9 +127,16 @@ export class PhysicsSystem {
     const startY = this.canvasHeight + 50; // 稍微在屏幕下方开始
 
     // 随机速度大小
-    const velocityMagnitude = 
+    let velocityMagnitude = 
       this.minThrowVelocity + 
       Math.random() * (this.maxThrowVelocity - this.minThrowVelocity);
+
+    // 应用难度系统的速度倍率
+    // 需求: 3.2 - WHEN 玩家的分数每增加200分时，THE 难度系统 SHALL 增加水果初始速度5%
+    if (this.difficultyManager) {
+      const speedMultiplier = this.difficultyManager.getSpeedMultiplier();
+      velocityMagnitude *= speedMultiplier;
+    }
 
     // 计算抛出角度（60-120度，向上抛）
     const minAngle = Math.PI / 3;  // 60度
@@ -161,6 +171,7 @@ export class PhysicsSystem {
 
   /**
    * 生成从特定侧面抛出的参数（用于更多样化的生成）
+   * 需求: 3.2 - 应用难度系统的速度倍率
    * @param side 'left' | 'right' | 'center'
    * @returns 抛出参数
    */
@@ -192,9 +203,16 @@ export class PhysicsSystem {
     const startY = this.canvasHeight + 50;
 
     // 随机速度大小
-    const velocityMagnitude = 
+    let velocityMagnitude = 
       this.minThrowVelocity + 
       Math.random() * (this.maxThrowVelocity - this.minThrowVelocity);
+
+    // 应用难度系统的速度倍率
+    // 需求: 3.2 - WHEN 玩家的分数每增加200分时，THE 难度系统 SHALL 增加水果初始速度5%
+    if (this.difficultyManager) {
+      const speedMultiplier = this.difficultyManager.getSpeedMultiplier();
+      velocityMagnitude *= speedMultiplier;
+    }
 
     // 计算速度分量
     const velocityX = Math.cos(throwAngle) * velocityMagnitude;
@@ -222,5 +240,14 @@ export class PhysicsSystem {
     this.canvasHeight = config.canvasHeight;
     this.minThrowVelocity = config.minThrowVelocity;
     this.maxThrowVelocity = config.maxThrowVelocity;
+  }
+
+  /**
+   * 设置难度管理器
+   * 需求: 3.2 - 需要访问难度管理器以应用速度倍率
+   * @param manager 难度管理器
+   */
+  setDifficultyManager(manager: any): void {
+    this.difficultyManager = manager;
   }
 }

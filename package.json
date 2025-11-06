@@ -8,14 +8,26 @@
     "watch": "tsc --watch",
     "dev": "tsc --watch",
     "serve": "npx http-server -p 8080 -c-1",
-    "start": "npm run build && npm run serve"
+    "start": "npm run build && npm run serve",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui"
   },
-  "keywords": ["game", "fruit-ninja", "webcam", "gesture-recognition", "mediapipe"],
+  "keywords": [
+    "game",
+    "fruit-ninja",
+    "webcam",
+    "gesture-recognition",
+    "mediapipe"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.3.0"
+    "@vitest/ui": "^4.0.7",
+    "jsdom": "^27.1.0",
+    "typescript": "^5.3.0",
+    "vitest": "^4.0.7"
   },
   "dependencies": {
     "@mediapipe/hands": "^0.4.1646424915"
