@@ -1,7 +1,7 @@
 {
-  "name": "webcam-fruit-ninja",
+  "name": "fruit-slicing-game-h5",
   "version": "1.0.0",
-  "description": "网页端水果忍者游戏 - 基于摄像头手势识别",
+  "description": "水果切割小游戏H5版 - 基于摄像头手势识别",
   "type": "module",
   "scripts": {
     "build": "tsc",
